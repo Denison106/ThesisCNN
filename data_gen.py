@@ -5,7 +5,6 @@ import imageio.v2 as imageio
 from scipy.ndimage import gaussian_filter, zoom
 from numpy.fft import fftshift, ifft2, fft2
 
-
 def normalize(img):
     """
     Normalizes an image to the range [0, 1].
@@ -21,21 +20,31 @@ def normalize(img):
     return (img - min_val) / (max_val - min_val)
 
 
-def generate_training_data(exp_sys_params, training_params, dataset_path, save_path):
+def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path):
     """
     Generates synthetic training data for fringe pattern simulation, using multiple images and varying phase delays.
 
     Parameters:
         exp_sys_params (dict): Experimental system parameters.
         training_params (dict): Training-related parameters.
-        dataset_path (str): Path to the folder containing images for phase objects.
+        dataset_paths (list): List of paths to folders containing images for phase objects.
         save_path (str): Path to save the generated dataset in HDF5 format.
     """
 
-    # Load image dataset
-    image_files = [os.path.join(dataset_path, f) for f in os.listdir(dataset_path) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    # Initialize list to store image file paths
+    image_files = []
+    for dataset_path in dataset_paths:
+        # Add images from each directory to the image_files list
+        if os.path.exists(dataset_path):
+            image_files.extend([
+                os.path.join(dataset_path, f) for f in os.listdir(dataset_path) 
+                if f.endswith(('.png', '.jpg', '.jpeg'))
+            ])
+        else:
+            print(f"Warning: {dataset_path} does not exist!")
+
     if not image_files:
-        raise FileNotFoundError("No images found in the dataset directory.")
+        raise FileNotFoundError("No images found in the dataset directories.")
 
     # Define simulation parameters
     sampling_rate = exp_sys_params["pix_size"] / exp_sys_params["optical_mag"]

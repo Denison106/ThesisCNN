@@ -28,8 +28,14 @@ training_params = {
 }
 
 # Define paths (FILL THESE IN)
-dataset_path = "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/Flowers Recognition_files"  # Path to folder containing phase object images
-save_path = "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/Data"  # Path to save the dataset
+dataset_path = [# Path to folder containing phase object images
+    "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/archive/train/daisy",
+    "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/archive/train/dandelion",
+    "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/archive/train/rose",
+    "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/archive/train/sunflower",
+    "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/archive/train/tulip"
+    ]
+save_path = "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/Data/dataset.h5"  # Path to save the dataset
 
 if __name__ == "__main__":
     # Generate dataset (if not already created)
