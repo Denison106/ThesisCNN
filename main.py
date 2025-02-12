@@ -1,7 +1,8 @@
+import numpy as np
 from data_gen import generate_training_data
 from network import build_model
 from utils import visualize_data, plot_learning_curves
-import numpy as np
+import h5py
 
 # Experimental System Parameters
 exp_sys_params = {
@@ -10,7 +11,7 @@ exp_sys_params = {
     "wavelength": 0.5,  # Wavelength in micrometers
     "ri_immersion": 1.33,  # Refractive index of immersion medium
     "beam_tilt_angle": 40 * (np.pi / 180),  # Beam tilt angle in radians
-    "detector_size": (512, 512),  # Detector size in pixels
+    "detector_size": (512, 512),  # Detector size in pixels (height, width)
 }
 
 # Display Parameters
@@ -20,17 +21,29 @@ display_params = {
 
 # Training Parameters
 training_params = {
-    "angles_number": 10,  # Number of azimuth angles to simulate
+    "angles_number": 10,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
     "epochs": 5,  # Number of epochs for training
     "learning_rate": 0.001,  # Learning rate for optimizer
 }
 
-if __name__ == "__main__":
-    # Generate data
-    input_images, output_labels = generate_training_data(exp_sys_params, training_params)
+# Define paths (FILL THESE IN)
+dataset_path = "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/Flowers Recognition_files"  # Path to folder containing phase object images
+save_path = "/Users/deniz/Desktop/Deniz/Uni/THESIS/DeepVID/Data"  # Path to save the dataset
 
-    # Visualize data
+if __name__ == "__main__":
+    # Generate dataset (if not already created)
+    if dataset_path and save_path:
+        print("Generating dataset...")
+        generate_training_data(exp_sys_params, training_params, dataset_path, save_path)
+
+    # Load dataset from HDF5 file
+    print("Loading dataset from HDF5 file...")
+    with h5py.File(save_path, "r") as hf:
+        input_images = np.array(hf["input_images"])
+        output_labels = np.array(hf["output_labels"])
+
+    # Visualize some sample images
     visualize_data(input_images, display_params)
 
     # Build and train the model
