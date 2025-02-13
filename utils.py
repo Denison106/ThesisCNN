@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import pickle
+import numpy as np
 
 def visualize_data(input_images, display_params):
     """
@@ -25,9 +27,23 @@ def plot_learning_curves(history):
         history: Training history object returned by the Keras model's `fit` method.
     """
     plt.figure()
-    plt.plot(history.history['loss'], label='Loss', color='blue')
+
+    try:
+        # Try to access and plot loss per iteration
+        with open("trained_model/train_losses", "rb") as fp:
+            train_loss_per_batch = pickle.load(fp)
+        iters = range(1, len(train_loss_per_batch) + 1)
+        plt.plot(iters, train_loss_per_batch, 'b', label='Training Loss')
+    except:
+        print("An exception occurred")
+
+
+    steps_per_epoch = (len(train_loss_per_batch)+1)/(len(history.history['loss']) + 1)
+    epochs = np.array(range(len(history.history['loss'])))+1
+    plt.plot(epochs * steps_per_epoch, history.history['loss'], 'bo', label='Loss')
+    plt.plot(epochs * steps_per_epoch, history.history['val_loss'], 'ro', label='Val Loss')
     plt.title('Loss Curve')
-    plt.xlabel('Epoch')
+    plt.xlabel('Iterations')
     plt.ylabel('Loss')
     plt.legend()
 

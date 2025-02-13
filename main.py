@@ -1,8 +1,11 @@
 import numpy as np
 from data_gen import generate_training_data
-from network import build_model
+#from amp_gen import generate_training_data
+from network import build_model, prepare_callbacks
 from utils import visualize_data, plot_learning_curves
 import h5py
+
+# TODO - how to enable None input size
 
 # Experimental System Parameters
 exp_sys_params = {
@@ -54,7 +57,12 @@ if __name__ == "__main__":
 
     # Build and train the model
     model = build_model(input_shape=input_images.shape[1:], learning_rate=training_params["learning_rate"])
-    history = model.fit(input_images, output_labels, batch_size=training_params["batch_size"], epochs=training_params["epochs"])
+    history = model.fit(input_images,
+                        output_labels,
+                        batch_size=training_params["batch_size"],
+                        epochs=training_params["epochs"],
+                        validation_split=training_params["validation_split"],
+                        callbacks=prepare_callbacks())
 
     # Plot learning curves
     plot_learning_curves(history)
