@@ -28,6 +28,7 @@ training_params = {
     "batch_size": 4,  # Batch size for training
     "epochs": 5,  # Number of epochs for training
     "learning_rate": 0.001,  # Learning rate for optimizer
+    "validation_split": 0.2
 }
 
 # Define paths (FILL THESE IN)
