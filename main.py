@@ -1,20 +1,18 @@
 import numpy as np
-from data_gen import generate_training_data
-#from amp_gen import generate_training_data
+#from data_gen import generate_training_data
+from amp_gen import generate_training_data
 from network import build_model, prepare_callbacks
 from utils import visualize_data, plot_learning_curves
 import h5py
 
-# TODO - how to enable None input size
 
 # Experimental System Parameters
 exp_sys_params = {
-    "pix_size": 3.5,  # Pixel size in micrometers
-    "optical_mag": 100,  # Optical magnification
-    "wavelength": 0.5,  # Wavelength in micrometers
-    "ri_immersion": 1.33,  # Refractive index of immersion medium
-    "beam_tilt_angle": 40 * (np.pi / 180),  # Beam tilt angle in radians
-    "detector_size": (512, 512),  # Detector size in pixels (height, width)
+    "pix_size": 0.1997,  # Pixel size in micrometers
+    "wavelength": 0.651,  # Wavelength in micrometers
+    "ri_immersion": 1.518,  # Refractive index of immersion medium
+    "beam_tilt_angle": 36.3 * (np.pi / 180),  # Beam tilt angle in radians
+    "detector_size": (258, 258),  # Detector size in pixels (height, width)
 }
 
 # Display Parameters

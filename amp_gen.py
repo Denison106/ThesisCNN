@@ -48,7 +48,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
         raise FileNotFoundError("No images found in the dataset directories.")
 
     # Define simulation parameters
-    sampling_rate = exp_sys_params["pix_size"] / exp_sys_params["optical_mag"]
+    sampling_rate = exp_sys_params["pix_size"]
     x = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * sampling_rate
     y = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * sampling_rate
     x2d, y2d = np.meshgrid(x, y)
