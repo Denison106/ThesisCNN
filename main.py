@@ -1,10 +1,13 @@
 import numpy as np
 import h5py
+import tensorflow as tf
+from tensorflow.data import Dataset
+from tensorflow.keras.callbacks import TensorBoard
+import os
+
 from amp_gen import generate_training_data
 from network import build_model, prepare_callbacks
 from utils import visualize_data, plot_learning_curves
-import tensorflow as tf
-from tensorflow.data import Dataset
 
 # Experimental System Parameters
 exp_sys_params = {
@@ -39,6 +42,10 @@ dataset_path = [
 ]
 
 save_path = "/home/deniz/DeepVID/Data/dataset.h5"  # Path to save the dataset
+
+# TensorBoard Log Directory
+log_dir = "logs/fit/" + tf.keras.callbacks.TensorBoard().log_dir
+os.makedirs(log_dir, exist_ok=True)
 
 def data_generator(dataset_file, indices, batch_size):
     """
@@ -140,6 +147,9 @@ if __name__ == "__main__":
     # Build the CNN model
     model = build_model(input_shape=(258, 258, 1), learning_rate=training_params["learning_rate"])
 
+    # Create TensorBoard Callback
+    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+
     # Train the model using the dataset
     history = model.fit(
         train_dataset,
@@ -147,8 +157,10 @@ if __name__ == "__main__":
         steps_per_epoch=100,  # Adjust this based on dataset size
         validation_data=validation_dataset,
         validation_steps=20,  # Adjust this based on dataset size
-        callbacks=prepare_callbacks()
+        callbacks=[tensorboard_callback]  # Include TensorBoard Callback
     )
 
     # Plot learning curves
     plot_learning_curves(history)
+
+    print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
