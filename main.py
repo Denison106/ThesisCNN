@@ -145,20 +145,35 @@ if __name__ == "__main__":
     )
 
     # Build the CNN model
-    model = build_model(input_shape=(258, 258, 1), learning_rate=training_params["learning_rate"])
+    model = build_model(input_shape=exp_sys_params["detector_size"]+(1,),
+                        learning_rate=training_params["learning_rate"])
 
     # Create TensorBoard Callback
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
     # Train the model using the dataset
+    train_data_size = (1.0 - training_params["validation_split"]) * training_params["dataset size"]
+    steps_per_epoch = np.ceil(train_data_size / training_params["batch_size"]).astype(int)
+    val_data_size = (training_params["validation_split"]/2) * training_params["dataset size"]
+    val_steps_per_epoch = np.ceil(val_data_size / training_params["batch_size"]).astype(int)
+    test_steps_per_epoch = val_steps_per_epoch
+
     history = model.fit(
         train_dataset,
         epochs=training_params["epochs"],
-        steps_per_epoch=100,  # Adjust this based on dataset size
+        steps_per_epoch=steps_per_epoch,
         validation_data=validation_dataset,
-        validation_steps=20,  # Adjust this based on dataset size
-        callbacks=[tensorboard_callback]  # Include TensorBoard Callback
+        validation_steps=val_steps_per_epoch,
+        callbacks=[tensorboard_callback],  # Include TensorBoard Callback
+        verbose=1
     )
+
+    score = model.evaluate(test_dataset,
+                           batch_size=training_params["batch_size"],
+                           steps=test_steps_per_epoch,
+                           verbose=1)
+
+    print(f'Test loss: {score}')
 
     # Plot learning curves
     plot_learning_curves(history)
