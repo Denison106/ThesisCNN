@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import os
 
 from amp_gen import generate_training_data
@@ -61,6 +61,11 @@ if __name__ == "__main__":
 
     # Create TensorBoard Callback
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    checkpoint = ModelCheckpoint(
+        os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
+        save_freq="epoch"
+    )
 
     # Train the model using the dataset
     train_data_size = (1.0 - training_params["validation_split"]) * training_params["dataset size"]
