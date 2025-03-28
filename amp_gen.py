@@ -49,9 +49,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
 
     # Define simulation parameters
     sampling_rate = exp_sys_params["pix_size"]
-    x = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * sampling_rate
-    y = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * sampling_rate
-    x2d, y2d = np.meshgrid(x, y)
 
     angles_number = training_params["angles_number"]
     delta_ph_max = np.pi  # Maximum phase variation
@@ -93,14 +90,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             for _ in range(angles_number):
                 beam_azimuth = np.random.uniform(0, 2 * np.pi)  # Random azimuth angle
 
-                # Compute spatial frequencies for object tilt
-                fc_xy = [
-                    np.cos(beam_azimuth) * np.sin(exp_sys_params["beam_tilt_angle"]) * (
-                                exp_sys_params["ri_immersion"] / exp_sys_params["wavelength"]),
-                    np.sin(beam_azimuth) * np.sin(exp_sys_params["beam_tilt_angle"]) * (
-                                exp_sys_params["ri_immersion"] / exp_sys_params["wavelength"]),
-                ]
-
                 # Object wave and Fourier mask for limited NA
                 NA = 1.3  # Numerical aperture
                 fillx = exp_sys_params["ri_immersion"] * np.sin(exp_sys_params["beam_tilt_angle"]) * np.cos(
@@ -119,12 +108,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
 
                 object_amp = np.abs(u_obj_na)
 
-                # # Compute object beam with object influence
-                # object_beam = np.exp(1j * 2 * np.pi * (x2d * fc_xy[0] + y2d * fc_xy[1]))
-                # object_beam = u_obj_na * object_beam
-
-                # Generate fringe pattern
-                #fringe_image = np.power(np.abs(object_beam + 1.0), 2)  # Reference beam = 1.0
                 dset_images[index, :, :, 0] = normalize(object_amp)
                 dset_labels[index, 0] = beam_azimuth
 
