@@ -51,7 +51,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
     sampling_rate = exp_sys_params["pix_size"]
 
     angles_number = training_params["angles_number"]
-    delta_ph_max = np.pi  # Maximum phase variation
+    global_delta_ph_max = 2 * np.pi # Maximum phase variation
 
     # Move Fx and Fy computation outside the loop for efficiency
     dfx = 1 / (exp_sys_params["detector_size"][0] * sampling_rate)
@@ -79,6 +79,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             ph_obj = ph_obj[10:-10, 10:-10]
 
             # Normalize and resize phase map
+            delta_ph_max = 2.0 * (np.random.rand() - 0.5) * global_delta_ph_max  # Current maximum phase delay
             ph_obj = (ph_obj - np.min(ph_obj)) / (np.max(ph_obj) - np.min(ph_obj)) * delta_ph_max
             zoom_factor_y = exp_sys_params["detector_size"][1] / ph_obj.shape[0]
             zoom_factor_x = exp_sys_params["detector_size"][0] / ph_obj.shape[1]
