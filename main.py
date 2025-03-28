@@ -25,7 +25,7 @@ display_params = {
 
 # Training Parameters
 training_params = {
-    "angles_number": 10,  # Number of azimuth angles per image
+    "angles_number": 1,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
     "epochs": 5,  # Number of epochs for training
     "learning_rate": 0.001,  # Learning rate for optimizer
