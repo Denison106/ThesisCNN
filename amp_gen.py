@@ -56,6 +56,13 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
     angles_number = training_params["angles_number"]
     delta_ph_max = np.pi  # Maximum phase variation
 
+    # Move Fx and Fy computation outside the loop for efficiency
+    dfx = 1 / (exp_sys_params["detector_size"][0] * sampling_rate)
+    dfy = 1 / (exp_sys_params["detector_size"][1] * sampling_rate)
+    fx = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * dfx
+    fy = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * dfy
+    Fx, Fy = np.meshgrid(fx, fy)
+
     # Create HDF5 file for dataset storage
     with h5py.File(save_path, "w") as hf:
         dset_images = hf.create_dataset("input_images",
@@ -70,6 +77,9 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             # Convert to grayscale if needed
             if ph_obj.ndim == 3:
                 ph_obj = np.mean(ph_obj, axis=-1)
+
+            # Crop 10 pixels from each side
+            ph_obj = ph_obj[10:-10, 10:-10]
 
             # Normalize and resize phase map
             ph_obj = (ph_obj - np.min(ph_obj)) / (np.max(ph_obj) - np.min(ph_obj)) * delta_ph_max
@@ -98,11 +108,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
                 filly = exp_sys_params["ri_immersion"] * np.sin(exp_sys_params["beam_tilt_angle"]) * np.sin(
                     beam_azimuth) / exp_sys_params["wavelength"]
                 fNA = NA / exp_sys_params["wavelength"]
-                dfx = 1 / (exp_sys_params["detector_size"][0] * sampling_rate)
-                dfy = 1 / (exp_sys_params["detector_size"][1] * sampling_rate)
-                fx = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * dfx
-                fy = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * dfy
-                Fx, Fy = np.meshgrid(fx, fy)
 
                 # Create Fourier mask
                 ft_mask = ((Fx - fillx) ** 2 + (Fy - filly) ** 2 < fNA ** 2).astype(float)
