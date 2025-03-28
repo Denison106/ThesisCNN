@@ -7,7 +7,6 @@ import pickle
 import os
 
 
-
 def build_model(input_shape, learning_rate):
     """
     Builds a simple CNN model for azimuth angle prediction.

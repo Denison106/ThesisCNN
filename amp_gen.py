@@ -21,7 +21,7 @@ def normalize(img):
     return (img - min_val) / (max_val - min_val)
 
 
-def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path):
+def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path, dataset_size):
     """
     Generates synthetic training data for fringe pattern simulation, using multiple images and varying phase delays.
 
@@ -31,6 +31,8 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
         dataset_paths (list): List of paths to folders containing images for phase objects.
         save_path (str): Path to save the generated dataset in HDF5 format.
     """
+
+    angles_number = training_params["angles_number"]
 
     # Initialize list to store image file paths
     image_files = []
@@ -44,13 +46,15 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
         else:
             print(f"Warning: {dataset_path} does not exist!")
 
+    if len(image_files) * angles_number < dataset_size:
+        raise FileNotFoundError("Not enough images found in the dataset directories.")
+
     if not image_files:
         raise FileNotFoundError("No images found in the dataset directories.")
 
     # Define simulation parameters
     sampling_rate = exp_sys_params["pix_size"]
 
-    angles_number = training_params["angles_number"]
     global_delta_ph_max = 2 * np.pi # Maximum phase variation
 
     # Move Fx and Fy computation outside the loop for efficiency
@@ -62,10 +66,10 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
 
     # Create HDF5 file for dataset storage
     with h5py.File(save_path, "w") as hf:
-        dset_images = hf.create_dataset("input_images",
-                                        (len(image_files) * angles_number, *exp_sys_params["detector_size"], 1),
+        dset_images = hf.create_dataset("inputs",
+                                        (dataset_size, *exp_sys_params["detector_size"], 1),
                                         dtype="float32")
-        dset_labels = hf.create_dataset("output_labels", (len(image_files) * angles_number, 1), dtype="float32")
+        dset_labels = hf.create_dataset("targets", (dataset_size, 1), dtype="float32")
 
         index = 0  # Track index in dataset
         for img_path in image_files:
@@ -113,5 +117,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
                 dset_labels[index, 0] = beam_azimuth
 
                 index += 1
-
-    print(f"Dataset saved to {save_path}")
+                if index >= dataset_size:
+                    print(f"Dataset saved to {save_path}")
+                    return
