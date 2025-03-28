@@ -69,6 +69,8 @@ if __name__ == "__main__":
     val_steps_per_epoch = np.ceil(val_data_size / training_params["batch_size"]).astype(int)
     test_steps_per_epoch = val_steps_per_epoch
 
+    model.summary()
+
     history = model.fit(
         train_dataset,
         epochs=training_params["epochs"],
