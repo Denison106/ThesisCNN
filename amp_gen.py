@@ -4,6 +4,7 @@ import os
 import imageio.v2 as imageio
 from scipy.ndimage import gaussian_filter, zoom
 from numpy.fft import fftshift, ifft2, fft2
+from utils import visualize_data
 
 
 def normalize(img):
@@ -33,6 +34,11 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
     """
 
     angles_number = training_params["angles_number"]
+
+    # Display Parameters
+    display_params = {
+        "display_pause_time": 2,  # Pause time for visualization
+    }
 
     # Initialize list to store image file paths
     image_files = []
@@ -118,5 +124,6 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
 
                 index += 1
                 if index >= dataset_size:
+                    visualize_data(dset_images[:20, ...], dset_labels[:20, ...], display_params)
                     print(f"Dataset saved to {save_path}")
                     return

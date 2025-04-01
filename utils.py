@@ -101,21 +101,26 @@ def preprocessed_dataset(save_path, batch_size, validation_split):
     return train_dataset, validation_dataset, test_dataset
 
 
-def visualize_data(input_images, display_params):
+def visualize_data(input_images, target_labels, display_params):
     """
     Visualizes the simulated fringe pattern data. 
     Parameters:
         input_images (ndarray): Array of simulated fringe pattern images.
+        target_labels (ndarray): Array of simulated azimuths.
         display_params (dict): Display-related parameters.
     """
     plt.ion()
     for i in range(input_images.shape[0]):
         plt.imshow(input_images[i, :, :, 0], cmap="viridis")
+        title_txt = "azimuth = {:.2f} deg"
+        azimuth_deg = np.rad2deg(target_labels[i, 0])
+        plt.title(title_txt.format(azimuth_deg))
         plt.colorbar()
         plt.show()
         plt.pause(display_params["display_pause_time"])
         plt.clf()
     plt.ioff()
+    plt.close()
 
 
 def plot_learning_curves(history):
@@ -135,7 +140,6 @@ def plot_learning_curves(history):
         plt.plot(iters, train_loss_per_batch, 'b', label='Training Loss')
     except:
         print("An exception occurred")
-
 
     steps_per_epoch = (len(train_loss_per_batch)+1)/(len(history.history['loss']) + 1)
     epochs = np.array(range(len(history.history['loss'])))+1
