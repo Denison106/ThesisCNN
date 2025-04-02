@@ -22,7 +22,7 @@ def normalize(img):
     return (img - min_val) / (max_val - min_val)
 
 
-def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path, dataset_size):
+def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path, dataset_size, data_type="amp"):
     """
     Generates synthetic training data for fringe pattern simulation, using multiple images and varying phase delays.
 
@@ -31,9 +31,16 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
         training_params (dict): Training-related parameters.
         dataset_paths (list): List of paths to folders containing images for phase objects.
         save_path (str): Path to save the generated dataset in HDF5 format.
+        data_type (str): type of data - "amp" - amplitude of object, "fringes" - fringe images.
     """
+    allowed_values = {"amp", "fringes"}
+    if data_type not in allowed_values:
+        raise ValueError(f"Invalid argument: {data_type}. Allowed values are: {data_type}")
 
     angles_number = training_params["angles_number"]
+
+    #Ensue random order of images in the dataset:
+    shuffled_indices = np.random.permutation(dataset_size)
 
     # Display Parameters
     display_params = {
@@ -61,7 +68,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
     # Define simulation parameters
     sampling_rate = exp_sys_params["pix_size"]
 
-    global_delta_ph_max = 2 * np.pi # Maximum phase variation
+    global_delta_ph_max = np.pi # Maximum phase variation
 
     # Move Fx and Fy computation outside the loop for efficiency
     dfx = 1 / (exp_sys_params["detector_size"][0] * sampling_rate)
@@ -69,6 +76,14 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
     fx = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * dfx
     fy = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * dfy
     Fx, Fy = np.meshgrid(fx, fy)
+    fNA = exp_sys_params["NA"] / exp_sys_params["wavelength"]
+    f0 = exp_sys_params["ri_immersion"] / exp_sys_params["wavelength"]
+
+    if data_type == "fringes":
+        # if you want to calculate fringes
+        x = np.arange(-exp_sys_params["detector_size"][0] / 2, exp_sys_params["detector_size"][0] / 2) * sampling_rate
+        y = np.arange(-exp_sys_params["detector_size"][1] / 2, exp_sys_params["detector_size"][1] / 2) * sampling_rate
+        x2d, y2d = np.meshgrid(x, y)
 
     # Create HDF5 file for dataset storage
     with h5py.File(save_path, "w") as hf:
@@ -88,6 +103,10 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             # Crop 10 pixels from each side
             ph_obj = ph_obj[10:-10, 10:-10]
 
+            # High-pass filtering
+            sigma = 85
+            ph_obj = ph_obj - gaussian_filter(ph_obj, sigma)
+
             # Normalize and resize phase map
             delta_ph_max = 2.0 * (np.random.rand() - 0.5) * global_delta_ph_max  # Current maximum phase delay
             ph_obj = (ph_obj - np.min(ph_obj)) / (np.max(ph_obj) - np.min(ph_obj)) * delta_ph_max
@@ -99,15 +118,11 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             u_obj = np.exp(1j * ph_obj)
 
             for _ in range(angles_number):
-                beam_azimuth = np.random.uniform(0, 2 * np.pi)  # Random azimuth angle
+                beam_azimuth = np.random.uniform(0, np.pi)  # Random azimuth angle
 
                 # Object wave and Fourier mask for limited NA
-                NA = 1.3  # Numerical aperture
-                fillx = exp_sys_params["ri_immersion"] * np.sin(exp_sys_params["beam_tilt_angle"]) * np.cos(
-                    beam_azimuth) / exp_sys_params["wavelength"]
-                filly = exp_sys_params["ri_immersion"] * np.sin(exp_sys_params["beam_tilt_angle"]) * np.sin(
-                    beam_azimuth) / exp_sys_params["wavelength"]
-                fNA = NA / exp_sys_params["wavelength"]
+                fillx = f0 * np.sin(exp_sys_params["beam_tilt_angle"]) * np.cos(beam_azimuth)
+                filly = f0 * np.sin(exp_sys_params["beam_tilt_angle"]) * np.sin(beam_azimuth)
 
                 # Create Fourier mask
                 ft_mask = ((Fx - fillx) ** 2 + (Fy - filly) ** 2 < fNA ** 2).astype(float)
@@ -117,13 +132,20 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
                 ftu_obj_na = fftshift(fft2(fftshift(u_obj))) * ft_mask
                 u_obj_na = fftshift(ifft2(fftshift(ftu_obj_na)))
 
-                object_amp = np.abs(u_obj_na)
+                match data_type:
+                    case "amp":
+                         current_data = np.abs(u_obj_na)
+                    case "fringes":
+                        object_beam = np.exp(1j * 2 * np.pi * (x2d * fillx + y2d * filly))
+                        object_beam = u_obj_na * object_beam
+                        current_data = np.power(np.abs(object_beam + 1.0), 2)  # Reference beam = 1.0
 
-                dset_images[index, :, :, 0] = normalize(object_amp)
-                dset_labels[index, 0] = beam_azimuth
+                current_data = normalize(current_data)
+                dset_images[shuffled_indices[index], :, :, 0] = current_data
+                dset_labels[shuffled_indices[index], 0] = beam_azimuth
 
                 index += 1
                 if index >= dataset_size:
-                    visualize_data(dset_images[:20, ...], dset_labels[:20, ...], display_params)
+                    #visualize_data(dset_images[:20, ...], dset_labels[:20, ...], display_params)
                     print(f"Dataset saved to {save_path}")
                     return
