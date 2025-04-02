@@ -1,12 +1,20 @@
+# TODO: The network learns from fringe images but not from the corresponding amplitude images.
+# TODO: Using fewer flower images and more azimuth angles per image helps—further analysis is needed.
+# TODO: JW – change the output to sin(azimuth) and cos(azimuth), and replace the sigmoid output with a linear output.
+# TODO: Maybe choose easier parameters, e.g., steeper illumination.
+
+
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import os
+import matplotlib.pyplot as plt
+import pandas as pd
 
-from amp_gen import generate_training_data
-from network import build_model, prepare_callbacks
-from utils import preprocessed_dataset, plot_learning_curves, visualize_data
+from data_generator import generate_training_data
+from network import build_winnik_model, prepare_callbacks, build_yutaro_model, build_mc_model, build_deniz_model
+from utils import preprocessed_dataset, plot_learning_curves, visualize_data, load_dataset_to_tensors
 
 
 # Experimental System Parameters
@@ -15,22 +23,18 @@ exp_sys_params = {
     "wavelength": 0.651,  # Wavelength in micrometers
     "ri_immersion": 1.518,  # Refractive index of immersion medium
     "beam_tilt_angle": 36.3 * (np.pi / 180),  # Beam tilt angle in radians
-    "detector_size": (258, 258),  # Detector size in pixels (height, width)
-}
-
-# Display Parameters
-display_params = {
-    "display_pause_time": 1,  # Pause time for visualization
+    "detector_size": (256, 256),  # Detector size in pixels (height, width)
+    "NA": 1.3
 }
 
 # Training Parameters
 training_params = {
     "angles_number": 1,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
-    "epochs": 2,  # Number of epochs for training
-    "learning_rate": 0.001,  # Learning rate for optimizer
+    "epochs": 20,  # Number of epochs for training
+    "learning_rate": 0.0001,  # Learning rate for optimizer #0.0001 worked for fringe images
     "validation_split": 0.2,  # 20% of data for validation
-    "dataset size": 4000 #Total size of dataset (training+val+test)
+    "dataset size": 4000  #Total size of dataset (training+val+test)
 }
 
 # Define paths (Update these paths for your system)
@@ -47,7 +51,7 @@ if __name__ == "__main__":
     # Generate dataset if not already created
     if dataset_path and save_path:
         print("Generating dataset...")
-        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"])
+        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"],"fringes")
 
     # Load dataset in a memory-efficient way
     print("Loading dataset using preprocessed_dataset()...")
@@ -55,9 +59,16 @@ if __name__ == "__main__":
         save_path, training_params["batch_size"], training_params["validation_split"]
     )
 
+    # train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset_to_tensors(
+    #     save_path, training_params["batch_size"], training_params["validation_split"])
+    # train_dataset = tf.data.Dataset.from_tensor_slices((train_data, train_labels)).shuffle(
+    #     buffer_size=train_data.shape[0]).batch(training_params["batch_size"]).prefetch(tf.data.experimental.AUTOTUNE)
+    # validation_dataset=(val_data, val_labels)
+    # test_dataset = test_data# test_labels)
+
     # Build the CNN model
-    model = build_model(input_shape=exp_sys_params["detector_size"]+(1,),
-                        learning_rate=training_params["learning_rate"])
+    model = build_winnik_model(input_shape=exp_sys_params["detector_size"]+(1,),
+                               learning_rate=training_params["learning_rate"])
 
     # Create TensorBoard Callback
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -86,6 +97,21 @@ if __name__ == "__main__":
         verbose=1
     )
 
+    # # Model evaluation
+    # im = val_data[0:10]
+    # im = tf.expand_dims(im, axis=0) if im.shape[0] == val_data.shape[1] else im
+    # predicted = model.predict(im) #* np.pi
+    # errors = np.abs(val_labels[0:10, 0] - predicted[:, 0])
+    #
+    # # Display results
+    # df = pd.DataFrame({
+    #     'Original': val_labels[0:10, 0],
+    #     'Predicted': predicted[:, 0],
+    #     'AbsError': errors,
+    #     'Error %': (errors * 100 / np.pi)
+    # })
+    # print(df)
+
     score = model.evaluate(test_dataset,
                            batch_size=training_params["batch_size"],
                            steps=test_steps_per_epoch,
@@ -97,3 +123,35 @@ if __name__ == "__main__":
     plot_learning_curves(history)
 
     print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
+
+    num_of_batches = 1
+    test_data_iterator = iter(test_dataset.batch(num_of_batches))
+    tensor_batch = next(test_data_iterator)  # Get batches
+    im = tf.reshape(tensor_batch[0], (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
+    labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 1))
+    predicted_labels = model.predict(im)
+    errors = np.abs(labels - predicted_labels)
+
+    # Display results
+    df = pd.DataFrame({
+        'Original': labels[:, 0],
+        'Predicted': predicted_labels[:, 0],
+        'Pred mod 2pi': predicted_labels[:, 0] % (2 * np.pi),
+        'AbsError': errors[:, 0],
+    })
+    print(df)
+
+    for i in range(im.shape[0]):
+        current_im = im[i, ...]
+        predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))[0][0]
+        plt.figure()
+        plt.imshow(current_im, cmap="viridis")
+        title_txt = "gt azimuth = {:.2f} deg / predicted azimuth = {:.2f} deg"
+        azimuth_deg = np.rad2deg(labels[i, 0])
+        pred_azimuth_deg = np.rad2deg(predicted_lab)
+        plt.title(title_txt.format(azimuth_deg, pred_azimuth_deg))
+        plt.colorbar()
+
+    plt.show()
+
+
