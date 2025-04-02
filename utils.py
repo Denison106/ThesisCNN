@@ -171,28 +171,28 @@ def plot_learning_curves(history):
     """
     plt.figure()
 
-    try:
-        # Try to access and plot loss per iteration
-        with open("trained_model/train_losses", "rb") as fp:
-            train_loss_per_batch = pickle.load(fp)
-        iters = range(1, len(train_loss_per_batch) + 1)
-        plt.plot(iters, train_loss_per_batch, 'b', label='Training Loss')
-    except:
-        print("An exception occurred")
+    # try:
+    #     # Try to access and plot loss per iteration
+    #     with open("trained_model/train_losses", "rb") as fp:
+    #         train_loss_per_batch = pickle.load(fp)
+    #     iters = range(1, len(train_loss_per_batch) + 1)
+    #     plt.plot(iters, train_loss_per_batch, 'b', label='Training Loss')
+    # except:
+    #     print("An exception occurred")
 
-    steps_per_epoch = (len(train_loss_per_batch)+1)/(len(history.history['loss']) + 1)
+ #  steps_per_epoch = (len(train_loss_per_batch)+1)/(len(history.history['loss']) + 1)
     epochs = np.array(range(len(history.history['loss'])))+1
-    plt.plot(epochs * steps_per_epoch, history.history['loss'], 'bo', label='Loss')
-    plt.plot(epochs * steps_per_epoch, history.history['val_loss'], 'ro', label='Val Loss')
+    plt.plot(epochs, history.history['loss'], 'bo', label='Loss')
+    plt.plot(epochs, history.history['val_loss'], 'ro', label='Val Loss')
     plt.title('Loss Curve')
-    plt.xlabel('Iterations')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
 
     plt.figure()
     plt.plot(history.history['mae'], label='Mean Absolute Error', color='red')
     plt.title('Mean Absolute Error Curve')
-    plt.xlabel('Epoch')
+    plt.xlabel('Epochs')
     plt.ylabel('Mean Absolute Error')
     plt.legend()
     plt.show()
