@@ -101,6 +101,45 @@ def preprocessed_dataset(save_path, batch_size, validation_split):
     return train_dataset, validation_dataset, test_dataset
 
 
+def load_dataset_to_tensors(save_path, batch_size, validation_split):
+    """
+    Loads dataset in a memory-efficient way using TensorFlow `Dataset` API.
+
+    Parameters:
+        save_path (str): Path to the HDF5 dataset.
+        batch_size (int): The batch size for training.
+        validation_split (float): Percentage of data to use for validation.
+
+    Returns:
+        train_dataset, validation_dataset, test_dataset: TensorFlow dataset objects.
+    """
+    dataset = load_dataset(save_path)
+
+    inputs = dataset["inputs"]
+    targets = dataset["targets"]
+
+    # Calculate set size
+    total_samples = len(inputs)
+    val_test_size = int(total_samples * validation_split)
+    val_size = val_test_size // 2
+    train_size = total_samples - val_test_size
+
+    # Calculate the indices for dataset splitting
+    train_indices = range(0, train_size)
+    val_indices = range(train_size, train_size + val_size)
+    test_indices = range(train_size + val_size, total_samples)
+
+    # Define generators
+    train_data = inputs[train_indices]
+    train_labels = targets[train_indices]
+    val_data = inputs[test_indices]
+    val_labels = targets[test_indices]
+    test_data = inputs[test_indices]
+    test_labels = targets[test_indices]
+
+    return train_data, train_labels, val_data, val_labels, test_data, test_labels
+
+
 def visualize_data(input_images, target_labels, display_params):
     """
     Visualizes the simulated fringe pattern data. 
