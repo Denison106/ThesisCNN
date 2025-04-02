@@ -1,5 +1,8 @@
+trained_model
 trained_model/
-logs/
+*.h5
+*.keras
+logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
