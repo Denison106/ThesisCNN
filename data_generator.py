@@ -118,7 +118,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
             u_obj = np.exp(1j * ph_obj)
 
             for _ in range(angles_number):
-                beam_azimuth = np.random.uniform(0, np.pi)  # Random azimuth angle
+                beam_azimuth = np.random.uniform(0, 2*np.pi)  # Random azimuth angle
 
                 # Object wave and Fourier mask for limited NA
                 fillx = f0 * np.sin(exp_sys_params["beam_tilt_angle"]) * np.cos(beam_azimuth)
