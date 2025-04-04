@@ -90,16 +90,22 @@ if __name__ == "__main__":
     test_steps_per_epoch = val_steps_per_epoch
 
     model.summary()
+    try:
+        history = model.fit(
+            train_dataset,
+            epochs=training_params["epochs"],
+            steps_per_epoch=steps_per_epoch,
+            validation_data=validation_dataset,
+            validation_steps=val_steps_per_epoch,
+            callbacks=[tensorboard_callback, checkpoint],  # Include TensorBoard Callback
+            verbose=1
+        )
 
-    history = model.fit(
-        train_dataset,
-        epochs=training_params["epochs"],
-        steps_per_epoch=steps_per_epoch,
-        validation_data=validation_dataset,
-        validation_steps=val_steps_per_epoch,
-        callbacks=[tensorboard_callback, checkpoint],  # Include TensorBoard Callback
-        verbose=1
-    )
+        # Plot learning curves
+        plot_learning_curves(history, log_dir)
+    except KeyboardInterrupt:
+        model = tf.keras.models.load_model(checkpoint_path)
+    finally:
 
     # # Model evaluation
     # im = val_data[0:10]
@@ -116,53 +122,51 @@ if __name__ == "__main__":
     # })
     # print(df)
 
-    score = model.evaluate(test_dataset,
-                           batch_size=training_params["batch_size"],
-                           steps=test_steps_per_epoch,
-                           verbose=1)
+        score = model.evaluate(test_dataset,
+                               batch_size=training_params["batch_size"],
+                               steps=test_steps_per_epoch,
+                               verbose=1)
 
-    print(f'Test loss: {score}')
+        print(f'Test loss: {score}')
 
-    # Plot learning curves
-    plot_learning_curves(history)
+        print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
 
-    print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
+        num_of_batches = 2
+        test_data_iterator = iter(test_dataset.batch(num_of_batches))
+        tensor_batch = next(test_data_iterator)  # Get batches
+        im = tf.reshape(tensor_batch[0],
+                        (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
+        labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 2))
+        predicted_labels = model.predict(im)
 
-    num_of_batches = 2
-    test_data_iterator = iter(test_dataset.batch(num_of_batches))
-    tensor_batch = next(test_data_iterator)  # Get batches
-    im = tf.reshape(tensor_batch[0],
-                    (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
-    labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 2))
-    predicted_labels = model.predict(im)
+        # Display results
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 1000)
+        df = pd.DataFrame({
+            'Original cos(a)': labels[:, 0],
+            'Predicted cos(a)': predicted_labels[:, 0],
+            'Error cos(a)': np.abs(predicted_labels[:, 0] - labels[:, 0]),
+            'Original sin(a)': labels[:, 1],
+            'Predicted sin(a)': predicted_labels[:, 1],
+            'Error sin(a)': np.abs(predicted_labels[:, 1] - labels[:, 1]),
+        })
+        print(df)
+        print("\n Mean values:")
+        print(df.mean())
 
-    # Display results
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', 1000)
-    df = pd.DataFrame({
-        'Original cos(a)': labels[:, 0],
-        'Predicted cos(a)': predicted_labels[:, 0],
-        'Error cos(a)': np.abs(predicted_labels[:, 0] - labels[:, 0]),
-        'Original sin(a)': labels[:, 1],
-        'Predicted sin(a)': predicted_labels[:, 1],
-        'Error sin(a)': np.abs(predicted_labels[:, 1] - labels[:, 1]),
-    })
-    print(df)
-    print("\n Mean values:")
-    print(df.mean())
+        for i in range(im.shape[0]):
+            current_im = im[i, ...]
+            predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))
+            plt.figure()
+            plt.imshow(current_im, cmap="viridis")
+            title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
+            gt_azimuth = np.rad2deg(np.arctan2(labels[i, 1], labels[i, 0]))
+            pred_azimuth = np.rad2deg(np.arctan2(predicted_lab[0, 1],  predicted_lab[0, 0]))
+            print(labels[i, 1] ** 2 + labels[i, 0] ** 2)
+            plt.title(title_txt.format(labels[i, 0], labels[i, 1], gt_azimuth,
+                                       predicted_lab[0, 0], predicted_lab[0, 1], pred_azimuth))
+            plt.colorbar()
 
-    for i in range(im.shape[0]):
-        current_im = im[i, ...]
-        predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))
-        plt.figure()
-        plt.imshow(current_im, cmap="viridis")
-        title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
-        gt_azimuth = np.rad2deg(np.arctan2(labels[i, 1], labels[i, 0]))
-        pred_azimuth = np.rad2deg(np.arctan2(predicted_lab[0, 1],  predicted_lab[0, 0]))
-        plt.title(title_txt.format(labels[i, 0], labels[i, 1], gt_azimuth,
-                                   predicted_lab[0, 0], predicted_lab[0, 1], pred_azimuth))
-        plt.colorbar()
-
-    plt.show()
+        plt.show()
 
 
