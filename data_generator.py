@@ -90,7 +90,7 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
         dset_images = hf.create_dataset("inputs",
                                         (dataset_size, *exp_sys_params["detector_size"], 1),
                                         dtype="float32")
-        dset_labels = hf.create_dataset("targets", (dataset_size, 1), dtype="float32")
+        dset_labels = hf.create_dataset("targets", (dataset_size, 2), dtype="float32")
 
         index = 0  # Track index in dataset
         for img_path in image_files:
@@ -142,7 +142,8 @@ def generate_training_data(exp_sys_params, training_params, dataset_paths, save_
 
                 current_data = normalize(current_data)
                 dset_images[shuffled_indices[index], :, :, 0] = current_data
-                dset_labels[shuffled_indices[index], 0] = beam_azimuth
+                dset_labels[shuffled_indices[index], 0] = np.cos(beam_azimuth % np.pi)
+                dset_labels[shuffled_indices[index], 1] = np.sin(beam_azimuth % np.pi)
 
                 index += 1
                 if index >= dataset_size:

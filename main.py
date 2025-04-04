@@ -124,32 +124,39 @@ if __name__ == "__main__":
 
     print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
 
-    num_of_batches = 1
+    num_of_batches = 2
     test_data_iterator = iter(test_dataset.batch(num_of_batches))
     tensor_batch = next(test_data_iterator)  # Get batches
-    im = tf.reshape(tensor_batch[0], (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
-    labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 1))
+    im = tf.reshape(tensor_batch[0],
+                    (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
+    labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 2))
     predicted_labels = model.predict(im)
-    errors = np.abs(labels - predicted_labels)
 
     # Display results
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
     df = pd.DataFrame({
-        'Original': labels[:, 0],
-        'Predicted': predicted_labels[:, 0],
-        'Pred mod 2pi': predicted_labels[:, 0] % (2 * np.pi),
-        'AbsError': errors[:, 0],
+        'Original cos(a)': labels[:, 0],
+        'Predicted cos(a)': predicted_labels[:, 0],
+        'Error cos(a)': np.abs(predicted_labels[:, 0] - labels[:, 0]),
+        'Original sin(a)': labels[:, 1],
+        'Predicted sin(a)': predicted_labels[:, 1],
+        'Error sin(a)': np.abs(predicted_labels[:, 1] - labels[:, 1]),
     })
     print(df)
+    print("\n Mean values:")
+    print(df.mean())
 
     for i in range(im.shape[0]):
         current_im = im[i, ...]
-        predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))[0][0]
+        predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))
         plt.figure()
         plt.imshow(current_im, cmap="viridis")
-        title_txt = "gt azimuth = {:.2f} deg / predicted azimuth = {:.2f} deg"
-        azimuth_deg = np.rad2deg(labels[i, 0])
-        pred_azimuth_deg = np.rad2deg(predicted_lab)
-        plt.title(title_txt.format(azimuth_deg, pred_azimuth_deg))
+        title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
+        gt_azimuth = np.rad2deg(np.arctan2(labels[i, 1], labels[i, 0]))
+        pred_azimuth = np.rad2deg(np.arctan2(predicted_lab[0, 1],  predicted_lab[0, 0]))
+        plt.title(title_txt.format(labels[i, 0], labels[i, 1], gt_azimuth,
+                                   predicted_lab[0, 0], predicted_lab[0, 1], pred_azimuth))
         plt.colorbar()
 
     plt.show()

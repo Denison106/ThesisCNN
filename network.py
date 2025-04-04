@@ -91,8 +91,8 @@ def build_winnik_model(input_shape, learning_rate):
     x = Dropout(dropout_prob)(x)
     x = Dense(num_filters, activation='relu')(x)
     x = Dropout(dropout_prob)(x)
-    output_layer = Dense(1, activation=lambda x: tf.constant(tnp.pi) * tf.sigmoid(x))(x)
-    #output_layer = Dense(1, activation='linear')(x)
+    #output_layer = Dense(1, activation=lambda x: tf.constant(tnp.pi) * tf.sigmoid(x))(x)
+    output_layer = Dense(2, activation='linear')(x)
     model = Model(inputs=input_layer, outputs=output_layer)
 
     model.compile(optimizer=Adam(learning_rate=learning_rate),
