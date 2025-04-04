@@ -1,12 +1,10 @@
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Activation, BatchNormalization, Dropout
+from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Activation, BatchNormalization, Dropout, Lambda
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import MeanSquaredError, MeanAbsoluteError
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, Callback
-from tensorflow.experimental import numpy as tnp # start using tnp instead of numpy or math library
+from tensorflow.keras.initializers import HeNormal
+from tensorflow.keras.saving import register_keras_serializable
 import tensorflow as tf
-import pickle
-import os
 
 
 def build_deniz_model(input_shape, learning_rate):
@@ -36,6 +34,25 @@ def build_deniz_model(input_shape, learning_rate):
                   metrics=['mae'])
     return model
 
+
+def hybrid_loss(y_true, y_pred):
+    # Normalize vectors
+    y_true_norm = tf.math.l2_normalize(y_true, axis=-1)
+    y_pred_norm = tf.math.l2_normalize(y_pred, axis=-1)
+
+    # Compute the cosine similarity (dot product)
+    cosine_similarity = tf.reduce_sum(y_true_norm * y_pred_norm, axis=-1)
+
+    # Use the absolute value of cosine similarity to ignore direction signs
+    cosine_loss = 1.0 - tf.abs(cosine_similarity)
+
+    mse = tf.reduce_mean(tf.square(y_true - y_pred))
+
+    return 0.5 * cosine_loss + 0.0 * mse
+
+@register_keras_serializable()
+def norm_vec(y):
+    return tf.linalg.l2_normalize(y, axis=1)
 
 def build_winnik_model(input_shape, learning_rate):
     """
