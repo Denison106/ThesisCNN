@@ -7,14 +7,14 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from data_generator import generate_training_data
-from network import build_winnik_model, prepare_callbacks, build_yutaro_model, build_mc_model, build_deniz_model
-from utils import preprocessed_dataset, plot_learning_curves, visualize_data, load_dataset_to_tensors
+from network import build_winnik_model, build_deniz_model
+from utils import preprocessed_dataset, plot_learning_curves
 
 
 # Experimental System Parameters
@@ -73,11 +73,14 @@ if __name__ == "__main__":
     # Create TensorBoard Callback
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
+    checkpoint_path = os.path.join(os.getcwd(), r'trained_model/model_checkpoint.keras')
     checkpoint = ModelCheckpoint(
-        os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
+        #os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
+        checkpoint_path,
         monitor = "val_loss",
         save_best_only=True
     )
+    #lr_plateau = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
 
     # Train the model using the dataset
     train_data_size = (1.0 - training_params["validation_split"]) * training_params["dataset size"]

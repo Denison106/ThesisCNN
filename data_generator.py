@@ -4,22 +4,7 @@ import os
 import imageio.v2 as imageio
 from scipy.ndimage import gaussian_filter, zoom
 from numpy.fft import fftshift, ifft2, fft2
-from utils import visualize_data
-
-
-def normalize(img):
-    """
-    Normalizes an image to the range [0, 1].
-
-    Parameters:
-        img (ndarray): Input image.
-
-    Returns:
-        ndarray: Normalized image with values in the range [0, 1].
-    """
-    min_val = np.min(img)
-    max_val = np.max(img)
-    return (img - min_val) / (max_val - min_val)
+from utils import visualize_data, normalize
 
 
 def generate_training_data(exp_sys_params, training_params, dataset_paths, save_path, dataset_size, data_type="amp"):

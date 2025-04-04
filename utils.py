@@ -1,9 +1,10 @@
+import os
 import matplotlib.pyplot as plt
-import pickle
 import h5py
 import numpy as np
 import tensorflow as tf
 from tensorflow.data import Dataset
+from scipy.io import loadmat
 
 
 def load_dataset(save_path):
@@ -132,8 +133,8 @@ def load_dataset_to_tensors(save_path, batch_size, validation_split):
     # Define generators
     train_data = inputs[train_indices]
     train_labels = targets[train_indices]
-    val_data = inputs[test_indices]
-    val_labels = targets[test_indices]
+    val_data = inputs[val_indices]
+    val_labels = targets[val_indices]
     test_data = inputs[test_indices]
     test_labels = targets[test_indices]
 
@@ -162,37 +163,143 @@ def visualize_data(input_images, target_labels, display_params):
     plt.close()
 
 
-def plot_learning_curves(history):
+def plot_learning_curves(history, save_dir):
     """
     Plots the learning curves (loss and MAE) from the training history.
 
     Parameters:
         history: Training history object returned by the Keras model's `fit` method.
+        save_dir: Directory path where the figure should be saved.
     """
-    plt.figure()
+    plt.figure(figsize=(12, 5))  # Better size for side-by-side plots
 
-    # try:
-    #     # Try to access and plot loss per iteration
-    #     with open("trained_model/train_losses", "rb") as fp:
-    #         train_loss_per_batch = pickle.load(fp)
-    #     iters = range(1, len(train_loss_per_batch) + 1)
-    #     plt.plot(iters, train_loss_per_batch, 'b', label='Training Loss')
-    # except:
-    #     print("An exception occurred")
-
- #  steps_per_epoch = (len(train_loss_per_batch)+1)/(len(history.history['loss']) + 1)
-    epochs = np.array(range(len(history.history['loss'])))+1
-    plt.plot(epochs, history.history['loss'], 'bo', label='Loss')
-    plt.plot(epochs, history.history['val_loss'], 'ro', label='Val Loss')
+    # Plot Loss Curve
+    plt.subplot(1, 2, 1)
+    epochs = np.arange(1, len(history.history['loss']) + 1)
+    plt.plot(epochs, history.history['loss'], 'bo-', label='Train Loss')
+    if 'val_loss' in history.history:
+        plt.plot(epochs, history.history['val_loss'], 'ro-', label='Val Loss')
     plt.title('Loss Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
 
-    plt.figure()
-    plt.plot(history.history['mae'], label='Mean Absolute Error', color='red')
+    # Plot MAE Curve
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, history.history['mae'], 'g^-', label='Train MAE')
+    if 'val_mae' in history.history:
+        plt.plot(epochs, history.history['val_mae'], 'c^-', label='Val MAE')
     plt.title('Mean Absolute Error Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Mean Absolute Error')
     plt.legend()
+
+    # Save the figure
+    os.makedirs(save_dir, exist_ok=True)  # Ensure directory exists
+    save_path = os.path.join(save_dir, "learning_curve.jpg")
+    plt.savefig(save_path, format='jpg', dpi=300)
+    print(f"Saved learning curves to {save_path}")
     plt.show()
+
+
+def load_sino_and_azim(mat_path):
+    sino = None
+    azim_vec = None
+
+    if not os.path.exists(mat_path):
+        raise FileNotFoundError(f"File not found: {mat_path}")
+
+    try:
+        # Try loading using h5py (works for MATLAB v7.3+)
+        with h5py.File(mat_path, 'r') as f:
+            # Load sino
+            if 'sino' in f:
+                sino = np.array(f['sino']).astype("complex")
+            else:
+                raise KeyError("Missing 'sino' in HDF5 .mat file")
+
+            # Load azim_vec if it exists
+            if 'azim_vec' in f:
+                azim_vec = np.array(f['azim_vec'])
+                azim_vec = np.squeeze(azim_vec)
+
+    except (OSError, IOError):
+        # Fallback to scipy for older MATLAB files
+        try:
+            mat = loadmat(mat_path)
+            if 'sino' in mat:
+                sino = mat['sino'].astype("complex")
+            else:
+                raise KeyError("Missing 'sino' in legacy .mat file")
+
+            if 'azim_vec' in mat:
+                azim_vec = mat['azim_vec']
+                azim_vec = np.squeeze(azim_vec)
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to load .mat file: {e}")
+
+    return sino, azim_vec
+
+
+def test_model(model, sino, display, gt_azimuth=None):
+
+    img_no = sino.shape[2]
+    gt_cos_sin = np.empty((img_no, 2), dtype="float32")
+    if gt_azimuth:
+        gt_cos_sin[:, 0] = np.cos(gt_azimuth % np.pi)
+        gt_cos_sin[:, 1] = np.sin(gt_azimuth % np.pi)
+
+    pred_cos_sin = np.empty((img_no, 2), dtype="float32")
+    pred_azimuth = np.empty((img_no, ), dtype="float32")
+
+    #plt.ion()
+    sino = np.abs(sino) # make sure that work on amplitude images
+    for i in range(img_no):
+        current_im = sino[ ...,i]
+        current_im = normalize(current_im)# preprocess data as it was done for taining data!
+        pred_cos_sin[i, :] = model.predict(tf.expand_dims(current_im, axis=0))
+        pred_azimuth[i] = np.arctan2(pred_cos_sin[i, 1], pred_cos_sin[i, 0])
+        if display:
+            plt.figure()
+            plt.imshow(current_im, cmap="viridis")
+            if gt_azimuth:
+                title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
+                formatted_title_txt = title_txt.format(gt_cos_sin[i, 0], gt_cos_sin[i, 1],
+                                                       np.rad2deg(gt_azimuth[i]),
+                                                       pred_cos_sin[i, 0], pred_cos_sin[i, 1],
+                                                       np.rad2deg(pred_azimuth[i]))
+            else:
+                title_txt = "pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
+                formatted_title_txt = title_txt.format(pred_cos_sin[i, 0], pred_cos_sin[i, 1],
+                                                       np.rad2deg(pred_azimuth[i]))
+
+            plt.title(formatted_title_txt)
+            plt.colorbar()
+            print(pred_cos_sin[i, 0]**2 + pred_cos_sin[i, 1] ** 2)
+        #     plt.pause(2)
+        #     plt.clf()
+        # plt.ioff()
+        # plt.close()
+    plt.show()
+
+    outputs = [pred_cos_sin, pred_azimuth]
+    if gt_azimuth is not None:
+        outputs.extend([gt_cos_sin, gt_azimuth])
+    return tuple(outputs)
+
+
+
+def normalize(img):
+    """
+    Normalizes an image to the range [0, 1].
+
+    Parameters:
+        img (ndarray): Input image.
+
+    Returns:
+        ndarray: Normalized image with values in the range [0, 1].
+    """
+    min_val = np.min(img)
+    max_val = np.max(img)
+    return (img - min_val) / (max_val - min_val)
