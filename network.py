@@ -72,41 +72,41 @@ def build_winnik_model(input_shape, learning_rate):
 
     input_layer = Input(shape=input_shape)
 
-    # Convolutional layers with ReLU activation
-    x = Conv2D(num_filters, filter_size, strides=2, padding='same')(input_layer)
+    # Convolutional layers with ReLU activation and He Normal initialization
+    x = Conv2D(num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(input_layer)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    x = Conv2D(2 * num_filters, filter_size, strides=2, padding='same')(x)
+    x = Conv2D(2 * num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    x = Conv2D(4 * num_filters, filter_size, strides=2, padding='same')(x)
+    x = Conv2D(4 * num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    x = Conv2D(8 * num_filters, filter_size, strides=2, padding='same')(x)
+    x = Conv2D(8 * num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    x = Conv2D(16 * num_filters, filter_size, strides=2, padding='same')(x)
+    x = Conv2D(16 * num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    x = Conv2D(32 * num_filters, filter_size, strides=2, padding='same')(x)
+    x = Conv2D(32 * num_filters, filter_size, strides=2, padding='same', kernel_initializer=HeNormal())(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(dropout_prob)(x)
 
-    # Dense layers with droputs
-    x = Flatten()(x)  # make it 1D data
-    x = Dense(num_filters * 2, activation='relu')(x)
+    # Dense layers with ReLU activation and He Normal initialization
+    x = Flatten()(x)  # Flatten the output from convolutional layers
+    x = Dense(num_filters * 2, activation='relu', kernel_initializer=HeNormal())(x)
     x = Dropout(dropout_prob)(x)
-    x = Dense(num_filters, activation='relu')(x)
+    x = Dense(num_filters, activation='relu', kernel_initializer=HeNormal())(x)
     x = Dropout(dropout_prob)(x)
     #output_layer = Dense(1, activation=lambda x: tf.constant(tnp.pi) * tf.sigmoid(x))(x)
     output_layer = Dense(2, activation='linear')(x)
