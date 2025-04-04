@@ -31,7 +31,7 @@ exp_sys_params = {
 training_params = {
     "angles_number": 1,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
-    "epochs": 20,  # Number of epochs for training
+    "epochs": 20*8,  # Number of epochs for training
     "learning_rate": 0.0001,  # Learning rate for optimizer #0.0001 worked for fringe images
     "validation_split": 0.2,  # 20% of data for validation
     "dataset size": 4000  #Total size of dataset (training+val+test)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Generate dataset if not already created
     if dataset_path and save_path:
         print("Generating dataset...")
-        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"],"fringes")
+        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"])#,"fringes")
 
     # Load dataset in a memory-efficient way
     print("Loading dataset using preprocessed_dataset()...")
