@@ -75,7 +75,8 @@ if __name__ == "__main__":
 
     checkpoint = ModelCheckpoint(
         os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
-        save_freq="epoch"
+        monitor = "val_loss",
+        save_best_only=True
     )
 
     # Train the model using the dataset
@@ -93,7 +94,7 @@ if __name__ == "__main__":
         steps_per_epoch=steps_per_epoch,
         validation_data=validation_dataset,
         validation_steps=val_steps_per_epoch,
-        callbacks=[tensorboard_callback],  # Include TensorBoard Callback
+        callbacks=[tensorboard_callback, checkpoint],  # Include TensorBoard Callback
         verbose=1
     )
 
