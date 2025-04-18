@@ -1,9 +1,11 @@
+import os
+
 import matplotlib.pyplot as plt
-import pickle
 import h5py
 import numpy as np
 import tensorflow as tf
 from tensorflow.data import Dataset
+from scipy.io import loadmat
 
 
 def load_dataset(save_path):
@@ -196,3 +198,97 @@ def plot_learning_curves(history):
     plt.ylabel('Mean Absolute Error')
     plt.legend()
     plt.show()
+
+
+def normalize(img):
+    """
+    Normalizes an image to the range [0, 1].
+
+    Parameters:
+        img (ndarray): Input image.
+
+    Returns:
+        ndarray: Normalized image with values in the range [0, 1].
+    """
+    min_val = np.min(img)
+    max_val = np.max(img)
+    return (img - min_val) / (max_val - min_val)
+
+def load_sino_and_azim(mat_path):
+    sino = None
+    azim_vec = None
+
+    if not os.path.exists(mat_path):
+        raise FileNotFoundError(f"File not found: {mat_path}")
+
+    try:
+        # Try loading using h5py (works for MATLAB v7.3+)
+        with h5py.File(mat_path, 'r') as f:
+            # Load sino
+            if 'sino' in f:
+                sino = np.array(f['sino']).astype("complex")
+            else:
+                raise KeyError("Missing 'sino' in HDF5 .mat file")
+
+            # Load azim_vec if it exists
+            if 'azim_vec' in f:
+                azim_vec = np.array(f['azim_vec'])
+                azim_vec = np.squeeze(azim_vec)
+
+    except (OSError, IOError):
+        # Fallback to scipy for older MATLAB files
+        try:
+            mat = loadmat(mat_path)
+            if 'sino' in mat:
+                sino = mat['sino'].astype("complex")
+            else:
+                raise KeyError("Missing 'sino' in legacy .mat file")
+
+            if 'azim_vec' in mat:
+                azim_vec = mat['azim_vec']
+                azim_vec = np.squeeze(azim_vec)
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to load .mat file: {e}")
+
+    return sino, azim_vec
+
+
+def test_model(model, sino, display, gt_azimuth=None):
+
+    img_no = sino.shape[-1]
+    print(img_no)
+    if gt_azimuth:
+        gt_azimuth = gt_azimuth % np.pi
+
+    pred_azimuth = np.empty((img_no,), dtype="float32")
+
+    # plt.ion()
+    sino = np.abs(sino)  # make sure that work on amplitude images
+    for i in range(img_no):
+        current_im = sino[..., i]
+        current_im = normalize(current_im)  # preprocess data as it was done for taining data!
+        pred_azimuth[i] = model.predict(tf.expand_dims(current_im, axis=0)).squeeze()
+        if display:
+            plt.figure()
+            plt.imshow(current_im, cmap="viridis")
+            if gt_azimuth:
+                title_txt = "gt: a={:.2f} \n pred: a={:.2f}"
+                formatted_title_txt = title_txt.format(np.rad2deg(gt_azimuth[i]),
+                                                       np.rad2deg(pred_azimuth[i]))
+            else:
+                title_txt = "pred: a={:.2f}"
+                formatted_title_txt = title_txt.format(np.rad2deg(pred_azimuth[i]))
+
+            plt.title(formatted_title_txt)
+            plt.colorbar()
+        #     plt.pause(2)
+        #     plt.clf()
+        # plt.ioff()
+        # plt.close()
+    plt.show()
+
+    outputs = [pred_azimuth]
+    if gt_azimuth is not None:
+        outputs.extend([gt_azimuth])
+    return tuple(outputs)
