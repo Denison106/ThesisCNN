@@ -1,27 +1,29 @@
 import tensorflow as tf
-# Or, if you want to handle Lambda layer specifically
-from tensorflow.keras.layers import Lambda
-# Override the deserialization with unsafe mode
-from tensorflow.keras import config
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 from utils import test_model, load_sino_and_azim
-from network import norm_vec
+from network import build_winnik_model, scaled_sigmoid_pi
 
 #sino_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\test_data\sim_sino_beads.mat"
-sino_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\test_data\exp_sino.mat"
-model_path =\
-    r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\Deniz code\ThesisCNN\trained_model1\model_checkpoint.keras"
+sino_path = "/mnt/c/Users/deniz/Desktop/Denison/Uni/THESIS/test_data/test_data/exp_sino.mat"
+weights_path = "/home/deniz/DeepVID/trained_model/epoch_20_model_checkpoint.keras"
 
 sino, azim_vec = load_sino_and_azim(sino_path)
 
+model = build_winnik_model(input_shape=(256, 256, 1), learning_rate=0.0001)
+
 try:
-    model = tf.keras.models.load_model(model_path, custom_objects={'Lambda': Lambda(norm_vec)})
-    print("Model loaded successfully.")
+    model.load_weights(weights_path)
+    print("Weights loaded successfully.")
 except Exception as e:
-    print(f"Error loading model: {e}")
+    raise RuntimeError(f"Failed to load model weights: {e}")
 
 display = True
-indices = list(range(0, 180, 20))
-if azim_vec:
+indices = list(range(0, 180, 30))
+if azim_vec is not None:
     azim_vec = azim_vec[indices]
-pred_output = test_model(model, sino[:, :, indices], display, gt_azimuth=azim_vec)
+sino = sino[:, :, indices]
+
+pred_output = test_model(model, sino, display, gt_azimuth=azim_vec)
