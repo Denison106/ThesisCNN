@@ -7,14 +7,14 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from data_generator import generate_training_data
-from network import build_winnik_model, build_deniz_model
-from utils import preprocessed_dataset, plot_learning_curves
+from network import build_winnik_model, prepare_callbacks, build_yutaro_model, build_mc_model, build_deniz_model
+from utils import preprocessed_dataset, plot_learning_curves, visualize_data, load_dataset_to_tensors
 
 
 # Experimental System Parameters
@@ -31,16 +31,21 @@ exp_sys_params = {
 training_params = {
     "angles_number": 1,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
-    "epochs": 20*8,  # Number of epochs for training
+    "epochs": 20,  # Number of epochs for training
     "learning_rate": 0.0001,  # Learning rate for optimizer #0.0001 worked for fringe images
     "validation_split": 0.2,  # 20% of data for validation
-    "dataset size": 4000  #Total size of dataset (training+val+test)
+    "dataset size": 2000  #Total size of dataset (training+val+test)
 }
 
 # Define paths (Update these paths for your system)
-dataset_path = [r"C:\Users\jw\Desktop\dyplomy\flowers_dataset"]
-
-save_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\data\dataset.h5"  # Path to save the dataset
+dataset_path = [
+    "/home/deniz/.cache/kagglehub/datasets/imsparsh/flowers-dataset/versions/2/train/daisy",
+    "/home/deniz/.cache/kagglehub/datasets/imsparsh/flowers-dataset/versions/2/train/dandelion",
+    "/home/deniz/.cache/kagglehub/datasets/imsparsh/flowers-dataset/versions/2/train/rose",
+    "/home/deniz/.cache/kagglehub/datasets/imsparsh/flowers-dataset/versions/2/train/sunflower",
+    "/home/deniz/.cache/kagglehub/datasets/imsparsh/flowers-dataset/versions/2/train/tulip"
+]
+save_path = "/home/deniz/DeepVID/Data/dataset.h5"  # Path to save the dataset
 
 # TensorBoard Log Directory
 log_dir = "logs/fit/" + tf.keras.callbacks.TensorBoard().log_dir
@@ -51,7 +56,7 @@ if __name__ == "__main__":
     # Generate dataset if not already created
     if dataset_path and save_path:
         print("Generating dataset...")
-        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"])#,"fringes")
+        generate_training_data(exp_sys_params, training_params, dataset_path, save_path, training_params["dataset size"],"fringes")
 
     # Load dataset in a memory-efficient way
     print("Loading dataset using preprocessed_dataset()...")
@@ -73,14 +78,10 @@ if __name__ == "__main__":
     # Create TensorBoard Callback
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    checkpoint_path = os.path.join(os.getcwd(), r'trained_model/model_checkpoint.keras')
     checkpoint = ModelCheckpoint(
-        #os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
-        checkpoint_path,
-        monitor = "val_loss",
-        save_best_only=True
+        os.path.join(os.getcwd(), r'trained_model/epoch_{epoch:02d}_model_checkpoint.keras'),
+        save_freq="epoch"
     )
-    #lr_plateau = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
 
     # Train the model using the dataset
     train_data_size = (1.0 - training_params["validation_split"]) * training_params["dataset size"]
@@ -90,22 +91,16 @@ if __name__ == "__main__":
     test_steps_per_epoch = val_steps_per_epoch
 
     model.summary()
-    try:
-        history = model.fit(
-            train_dataset,
-            epochs=training_params["epochs"],
-            steps_per_epoch=steps_per_epoch,
-            validation_data=validation_dataset,
-            validation_steps=val_steps_per_epoch,
-            callbacks=[tensorboard_callback, checkpoint],  # Include TensorBoard Callback
-            verbose=1
-        )
 
-        # Plot learning curves
-        plot_learning_curves(history, log_dir)
-    except KeyboardInterrupt:
-        model = tf.keras.models.load_model(checkpoint_path)
-    finally:
+    history = model.fit(
+        train_dataset,
+        epochs=training_params["epochs"],
+        steps_per_epoch=steps_per_epoch,
+        validation_data=validation_dataset,
+        validation_steps=val_steps_per_epoch,
+        callbacks=[tensorboard_callback, checkpoint],  # Include TensorBoard Callback
+        verbose=1
+    )
 
     # # Model evaluation
     # im = val_data[0:10]
@@ -122,51 +117,44 @@ if __name__ == "__main__":
     # })
     # print(df)
 
-        score = model.evaluate(test_dataset,
-                               batch_size=training_params["batch_size"],
-                               steps=test_steps_per_epoch,
-                               verbose=1)
+    score = model.evaluate(test_dataset,
+                           batch_size=training_params["batch_size"],
+                           steps=test_steps_per_epoch,
+                           verbose=1)
 
-        print(f'Test loss: {score}')
+    print(f'Test loss: {score}')
 
-        print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
+    # Plot learning curves
+    plot_learning_curves(history)
 
-        num_of_batches = 2
-        test_data_iterator = iter(test_dataset.batch(num_of_batches))
-        tensor_batch = next(test_data_iterator)  # Get batches
-        im = tf.reshape(tensor_batch[0],
-                        (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
-        labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 2))
-        predicted_labels = model.predict(im)
+    print(f"Training completed. Run TensorBoard with: tensorboard --logdir={log_dir}")
 
-        # Display results
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', 1000)
-        df = pd.DataFrame({
-            'Original cos(a)': labels[:, 0],
-            'Predicted cos(a)': predicted_labels[:, 0],
-            'Error cos(a)': np.abs(predicted_labels[:, 0] - labels[:, 0]),
-            'Original sin(a)': labels[:, 1],
-            'Predicted sin(a)': predicted_labels[:, 1],
-            'Error sin(a)': np.abs(predicted_labels[:, 1] - labels[:, 1]),
-        })
-        print(df)
-        print("\n Mean values:")
-        print(df.mean())
+    num_of_batches = 1
+    test_data_iterator = iter(test_dataset.batch(num_of_batches))
+    tensor_batch = next(test_data_iterator)  # Get batches
+    im = tf.reshape(tensor_batch[0], (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
+    labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 1))
+    predicted_labels = model.predict(im)
+    errors = np.abs(labels - predicted_labels)
 
-        for i in range(im.shape[0]):
-            current_im = im[i, ...]
-            predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))
-            plt.figure()
-            plt.imshow(current_im, cmap="viridis")
-            title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
-            gt_azimuth = np.rad2deg(np.arctan2(labels[i, 1], labels[i, 0]))
-            pred_azimuth = np.rad2deg(np.arctan2(predicted_lab[0, 1],  predicted_lab[0, 0]))
-            print(labels[i, 1] ** 2 + labels[i, 0] ** 2)
-            plt.title(title_txt.format(labels[i, 0], labels[i, 1], gt_azimuth,
-                                       predicted_lab[0, 0], predicted_lab[0, 1], pred_azimuth))
-            plt.colorbar()
+    # Display results
+    df = pd.DataFrame({
+        'Original': labels[:, 0],
+        'Predicted': predicted_labels[:, 0],
+        'Pred mod 2pi': predicted_labels[:, 0] % (2 * np.pi),
+        'AbsError': errors[:, 0],
+    })
+    print(df)
 
-        plt.show()
+    for i in range(im.shape[0]):
+        current_im = im[i, ...]
+        predicted_lab = model.predict(tf.expand_dims(current_im, axis=0))[0][0]
+        plt.figure()
+        plt.imshow(current_im, cmap="viridis")
+        title_txt = "gt azimuth = {:.2f} deg / predicted azimuth = {:.2f} deg"
+        azimuth_deg = np.rad2deg(labels[i, 0])
+        pred_azimuth_deg = np.rad2deg(predicted_lab)
+        plt.title(title_txt.format(azimuth_deg, pred_azimuth_deg))
+        plt.colorbar()
 
-
+    plt.show()
