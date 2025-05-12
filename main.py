@@ -137,6 +137,9 @@ if __name__ == "__main__":
         im = tf.reshape(tensor_batch[0],
                         (num_of_batches * training_params["batch_size"], *exp_sys_params["detector_size"], 1))
         labels = tf.reshape(tensor_batch[1], (num_of_batches * training_params["batch_size"], 2))
+
+        #np.savez('test_dataset.npz', data=im, labels=labels)
+
         predicted_labels = model.predict(im)
 
         # Display results
