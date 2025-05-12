@@ -246,7 +246,7 @@ def test_model(model, sino, display, gt_azimuth=None):
 
     img_no = sino.shape[2]
     gt_cos_sin = np.empty((img_no, 2), dtype="float32")
-    if gt_azimuth:
+    if 'gt_azimuth' in locals():
         gt_cos_sin[:, 0] = np.cos(gt_azimuth % np.pi)
         gt_cos_sin[:, 1] = np.sin(gt_azimuth % np.pi)
 
@@ -263,7 +263,7 @@ def test_model(model, sino, display, gt_azimuth=None):
         if display:
             plt.figure()
             plt.imshow(current_im, cmap="viridis")
-            if gt_azimuth:
+            if 'gt_azimuth' in locals():
                 title_txt = "gt: ca = {:.2f}; sa = {:.2f}; a={:.2f} \n pred: ca = {:.2f}; sa = {:.2f}; a={:.2f}"
                 formatted_title_txt = title_txt.format(gt_cos_sin[i, 0], gt_cos_sin[i, 1],
                                                        np.rad2deg(gt_azimuth[i]),

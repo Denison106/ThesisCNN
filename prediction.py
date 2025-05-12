@@ -9,8 +9,10 @@ from network import norm_vec
 
 #sino_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\test_data\sim_sino_beads.mat"
 sino_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\test_data\exp_sino.mat"
-model_path =\
-    r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\Deniz code\ThesisCNN\trained_model1\model_checkpoint.keras"
+model_path = \
+    r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\best_trained_models\two_outputs__amplitude_no_repetitions\100epok\more50epochs\model_checkpoint.keras"
+
+#    r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\Deniz code\ThesisCNN\trained_model1\model_checkpoint.keras"
 
 sino, azim_vec = load_sino_and_azim(sino_path)
 
@@ -21,7 +23,7 @@ except Exception as e:
     print(f"Error loading model: {e}")
 
 display = True
-indices = list(range(0, 180, 20))
-if azim_vec:
+indices = list(range(0, 90, 10))
+if 'azim_vec' in globals():
     azim_vec = azim_vec[indices]
 pred_output = test_model(model, sino[:, :, indices], display, gt_azimuth=azim_vec)
