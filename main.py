@@ -14,6 +14,7 @@ import pandas as pd
 
 from data_generator import generate_training_data
 from network import build_winnik_model, build_deniz_model
+from resnet import build_resnet
 from utils import preprocessed_dataset, plot_learning_curves
 
 
@@ -31,14 +32,15 @@ exp_sys_params = {
 training_params = {
     "angles_number": 1,  # Number of azimuth angles per image
     "batch_size": 4,  # Batch size for training
-    "epochs": 20*8,  # Number of epochs for training
-    "learning_rate": 0.0001,  # Learning rate for optimizer #0.0001 worked for fringe images
+    "epochs": 10,  # Number of epochs for training
+    "learning_rate": 1e-5,  # Learning rate for optimizer #0.0001 worked for fringe images
     "validation_split": 0.2,  # 20% of data for validation
     "dataset size": 4000  #Total size of dataset (training+val+test)
 }
 
 # Define paths (Update these paths for your system)
 dataset_path = [r"C:\Users\jw\Desktop\dyplomy\flowers_dataset"]
+#dataset_path = None#[r"C:\Users\jw\Desktop\dyplomy\flowers_dataset"]
 
 save_path = r"C:\Users\jw\Desktop\dyplomy\Erkosar Deniz\data\dataset.h5"  # Path to save the dataset
 
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     # test_dataset = test_data# test_labels)
 
     # Build the CNN model
-    model = build_winnik_model(input_shape=exp_sys_params["detector_size"]+(1,),
+    model = build_resnet(input_shape=exp_sys_params["detector_size"]+(1,),
                                learning_rate=training_params["learning_rate"])
 
     # Create TensorBoard Callback
